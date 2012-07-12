@@ -31,7 +31,12 @@
 # SET POLICY
 # iptables policy=INPUT target=DROP
 # SET RULES
-# The following parameters are possible:
+# The "j" parameter is set by default to ACCEPT.  You can override with j=X
+# A pos parameter allows you to specific the position if the rule needs to be
+# added.  The default position is 'before_rejects" which will insert a new rule
+# before any -j REJECT rules.  Be careful about idempotent behaviour if you
+# override the default here.
+# The following other parameters are possible:
 # chain: (INPUT/OUTPUT/FORWARD/etc)
 # s: source
 # d: destination
@@ -73,12 +78,12 @@ class Rule(object):
             self.process_rule(p, " -" + p)
 
         self.process_rule("mstate", " -m state --state")
-        self.process_rule("dport", " --dport")
-        self.process_rule("sport", " --sport")
-        self.process_rule("tdport", " -p tcp --dport")
-        self.process_rule("udport", " -p udp --dport")
-        self.process_rule("tsport", " -p tcp --sport")
-        self.process_rule("usport", " -p udp --sport")
+        self.process_rule("dport", " -m tcp --dport")
+        self.process_rule("sport", " -m tcp --sport")
+        self.process_rule("tdport", " -p tcp -m tcp --dport")
+        self.process_rule("udport", " -p udp -m udp --dport")
+        self.process_rule("tsport", " -p tcp -m tcp --sport")
+        self.process_rule("usport", " -p udp -m udp --sport")
 
 
         j = params.get('j', 'ACCEPT')
@@ -96,7 +101,10 @@ class Rule(object):
                     return value
             else:
                 if len(blocks) == 2:
-                    return value
+                    if blocks[1] == "24":
+                        return parts[0] + "." + parts[1] + "." + parts[2] + ".0/24"
+                    else:
+                        return value
                 else:
                     return value + "/32"
         return value
@@ -145,7 +153,7 @@ class Table(object):
                     self.rules.append(rule.str)
                 if pos=="before_rejects":
                     for i,v in enumerate(self.rules):
-                        if v.find("REJECT") > 0:
+                        if v.find("REJECT") > 0 or v.find("LOG") > 0:
                             self.rules[i:i] = [rule.str]
                             return True
                     self.rules.append(rule.str)
@@ -227,8 +235,10 @@ if not params.get('state', None) == 'no-run':
     _run('/sbin/iptables-multi restore < /etc/sysconfig/iptables')
 
 result = {}
-result['msg'] = 'iptables finished'
+result['msg'] = 'iptables finished: ' + args
 result['changed'] = changed
 
+#fail_kv(msg="iptables test: " + args)
+#sys.exit(1)
 
 print json.dumps(result)
