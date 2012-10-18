@@ -74,7 +74,7 @@ class Rule(object):
         self.chain = chain
         #Process the params
 
-        for p in ["s", "d", "i", "p"]:
+        for p in ["s", "d", "i","o", "p"]:
             self.process_rule(p, " -" + p)
 
         self.process_rule("mstate", " -m state --state")
@@ -88,7 +88,6 @@ class Rule(object):
 
         j = params.get('j', 'ACCEPT')
         self.str += " -j " + j + " "
-
 
     #If value is an IP and it does not include a block this add /32
     #If value is not an IP it does nothing.
@@ -155,7 +154,7 @@ class Table(object):
                     for i,v in enumerate(self.rules):
                         if v.find("REJECT") > 0 or v.find("LOG") > 0:
                             self.rules[i:i] = [rule.str]
-                            return True
+                            return True, rule.str
                     self.rules.append(rule.str)
                 else:
                     self.rules[pos:pos] = [rule.str]
@@ -237,7 +236,7 @@ if not params.get('state', None) == 'no-run':
 result = {}
 result['msg'] = 'iptables finished: ' + args
 result['changed'] = changed
-
+print "HELLO WORLD"
 #fail_kv(msg="iptables test: " + args)
 #sys.exit(1)
 
